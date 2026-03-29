@@ -1,0 +1,65 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: istiod-install
+  namespace: istio-system
+spec:
+  profile: default
+  meshConfig:
+    trustDomain: cluster.local
+    defaultConfig:
+      proxyMetadata:
+        ISTIO_META_CNI_ENABLED: "true"
+  components:
+    cni:
+      enabled: true
+      namespace: kube-system
+  values:
+    global:
+      istioNamespace: istio-system
+      pilotCertProvider: istiod
+      mountMtlsCerts: true
+    sidecarInjectorWebhook:
+      rewriteAppHTTPProbe: true
+      enableNamespacesByDefault: false
+      templates:
+        sidecar: |
+          metadata:
+            annotations:
+              sidecar.istio.io/status: '{"version":"1.26.1","containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs","istio-token"]}'
+          spec:
+            containers:
+            - name: istio-proxy
+              image: docker.io/istio/proxyv2:1.26.1
+              args:
+              - proxy
+              - sidecar
+              - --domain
+              - $(POD_NAMESPACE).svc.cluster.local
+              - --proxyLogLevel=warning
+              - --proxyComponentLogLevel=misc:error
+              - --log_output_level=default:info
+              env:
+              - name: ISTIO_META_CNI_ENABLED
+                value: "true"
+              volumeMounts:
+              - name: istio-envoy
+                mountPath: /etc/istio/proxy
+              - name: istio-certs
+                mountPath: /var/run/secrets/istio
+              - name: istio-token
+                mountPath: /var/run/secrets/tokens
+            volumes:
+            - name: istio-envoy
+              emptyDir: {}
+            - name: istio-token
+              projected:
+                sources:
+                - serviceAccountToken:
+                    path: istio-token
+                    expirationSeconds: 43200
+                    audience: istio-ca
+            - name: istio-certs
+              secret:
+                secretName: istio.default
+                optional: true

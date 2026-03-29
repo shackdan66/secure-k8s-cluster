@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opa-policy
+  namespace: opa
+data:
+  policy.rego: |
+    package envoy.authz
+
+    default allow = false
+
+    allow {
+      input.attributes.request.http.method == "GET"
+    }

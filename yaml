@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    sidecar.istio.io/rewriteAppHTTPProbers: "true"
+  creationTimestamp: null
+  name: helloworld
+  namespace: secure-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: helloworld
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /stats/prometheus
+        prometheus.io/port: "15020"
+        prometheus.io/scrape: "true"
+        sidecar.istio.io/status: '{"initContainers":null,"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null,"revision":"default"}'
+      creationTimestamp: null
+      labels:
+        app: helloworld
+    spec:
+      containers:
+      - image: docker.io/istio/examples-helloworld-v1:latest
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /app-health/helloworld/livez
+            port: 15020
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 5
+        name: helloworld
+        ports:
+        - containerPort: 5000
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /app-health/helloworld/readyz
+            port: 15020
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 100m
+            memory: 64Mi
+          requests:
+            cpu: 10m
+            memory: 32Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsGroup: 1001
+          runAsNonRoot: true
+          runAsUser: 1001
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      - args:
+        - proxy
+        - sidecar
+        - --domain
+        - $(POD_NAMESPACE).svc.cluster.local
+        - --proxyLogLevel=warning
+        - --proxyComponentLogLevel=misc:error
+        - --log_output_level=default:info
+        env:
+        - name: ISTIO_META_CNI_ENABLED
+          value: "true"
+        image: docker.io/istio/proxyv2:1.26.1
+        name: istio-proxy
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/istio/proxy
+          name: istio-envoy
+        - mountPath: /var/run/secrets/istio
+          name: istio-certs
+      securityContext:
+        fsGroup: 1001
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - emptyDir: {}
+        name: istio-envoy
+      - name: istio-certs
+        secret:
+          optional: true
+          secretName: istio-ca-secret
+      - emptyDir: {}
+        name: tmp
+status: {}
+---

@@ -1,0 +1,79 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gatekeeper-templates
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"  # Deploy after Gatekeeper base
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:shackdan/secure-cluster.git
+    path: apps/gatekeeper-policies/templates
+    directory:
+      recurse: true
+    targetRevision: HEAD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gatekeeper-system
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  # Critical: Ignore fields that Gatekeeper manages
+  ignoreDifferences:
+    # Ignore status fields on all Gatekeeper resources
+    - group: constraints.gatekeeper.sh
+      kind: "*"
+      jsonPointers:
+        - /status
+        - /metadata/finalizers
+        - /metadata/generation
+        - /metadata/resourceVersion
+        - /metadata/uid
+    
+    # Ignore status fields on ConstraintTemplates  
+    - group: templates.gatekeeper.sh
+      kind: ConstraintTemplate
+      jsonPointers:
+        - /status
+        - /metadata/finalizers
+        - /metadata/generation
+        - /metadata/resourceVersion
+        - /metadata/uid
+    
+    # Ignore Config status
+    - group: config.gatekeeper.sh
+      kind: Config
+      jsonPointers:
+        - /status
+        - /metadata/finalizers
+        - /metadata/generation
+        - /metadata/resourceVersion
+        - /metadata/uid
+    
+    # Ignore Assign and AssignMetadata status
+    - group: mutations.gatekeeper.sh
+      kind: Assign
+      jsonPointers:
+        - /status
+        - /metadata/finalizers
+    - group: mutations.gatekeeper.sh
+      kind: AssignMetadata
+      jsonPointers:
+        - /status
+        - /metadata/finalizers

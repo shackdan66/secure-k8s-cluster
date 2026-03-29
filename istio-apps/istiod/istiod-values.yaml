@@ -1,0 +1,16 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: istiod-install
+  namespace: istio-system
+spec:
+  profile: default
+  meshConfig:
+    trustDomain: cluster.local
+    defaultConfig:
+      proxyMetadata:
+        ISTIO_META_CNI_ENABLED: "true"
+  components:
+    cni:
+      enabled: true
+      namespace: kube-system

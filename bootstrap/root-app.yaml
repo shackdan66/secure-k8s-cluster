@@ -1,0 +1,25 @@
+# app-of-apps.yaml (apply this to your cluster)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-base-apps
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/shackdan/secure-cluster.git ###git@github.com:shackdan/secure-cluster.git
+    path: apps
+    directory:
+      recurse: true
+    targetRevision: HEAD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

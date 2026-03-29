@@ -1,0 +1,5 @@
+resources:
+  - templates/istio-mtls-template.yaml
+  - templates/vs-host-uniqueness.yaml
+  - constraints/require-mtls.yaml
+  - constraints/unique-vs-host.yaml

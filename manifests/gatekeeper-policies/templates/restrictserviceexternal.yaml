@@ -1,0 +1,33 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8srestrictserviceexternal
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRestrictServiceExternal
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            types:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srestrictserviceexternal
+
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Service"
+          blocked_type := input.parameters.types[_]
+          input.review.object.spec.type == blocked_type
+        
+          msg := sprintf("Service type %v is not allowed", [blocked_type])
+        }
+
+

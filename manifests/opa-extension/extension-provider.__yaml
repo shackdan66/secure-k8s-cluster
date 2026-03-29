@@ -1,0 +1,16 @@
+apiVersion: telemetry.istio.io/v1alpha1
+kind: ExtensionProvider
+metadata:
+  name: opa-authz
+  namespace: istio-system
+spec:
+  envoyExtAuthzGrpc:
+    service: opa.opa.svc.cluster.local
+    port: 9191
+    includeRequestBodyInCheck:
+      maxRequestBytes: 8192
+      allowPartialMessage: true
+    headersToDownstreamOnDeny:
+      - content-type
+    headersToUpstreamOnAllow:
+      - authorization

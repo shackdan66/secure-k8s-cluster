@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istiod
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  project: default
+  source:
+    chart: istiod
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    targetRevision: 1.26.2
+    helm:
+      values: |
+        
+        # Enable CNI
+        global:
+          platform: minikube
+          istio_cni:
+            enabled: true
+            chained: false  # Set to true if using chained CNI mode
+        
+        # CNI configuration
+        cni:
+          namespace: istio-system
+          enabled: true
+          
+        # Additional CNI settings if needed
+        meshConfig:
+          defaultConfig:
+            proxyMetadata:
+              ISTIO_META_CNI_ENABLED: "true"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+  ignoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: ValidatingWebhookConfiguration
+    jsonPointers:
+    - /webhooks/0/failurePolicy

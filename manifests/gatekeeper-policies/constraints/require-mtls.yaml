@@ -1,0 +1,19 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: IstioMTLSRequired
+metadata:
+  name: require-istio-mtls
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["networking.istio.io"]
+        kinds: ["DestinationRule"]
+  parameters:
+    exemptNamespaces:
+      - istio-system
+      - istio-operator
+      - kube-system
+      - gatekeeper-system

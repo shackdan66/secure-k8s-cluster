@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: helloworld
+  namespace: secure-apps
+spec:
+  selector:
+    app: helloworld
+  ports:
+    - port: 80
+      targetPort: 5678
+      name: http

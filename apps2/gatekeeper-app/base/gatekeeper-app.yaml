@@ -1,0 +1,283 @@
+# Gatekeeper Base Installation (for App of Apps)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gatekeeper-base
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://open-policy-agent.github.io/gatekeeper/charts
+    chart: gatekeeper
+    targetRevision: "3.19.2"
+    helm:
+      values: |
+        replicas: 2
+        exemptNamespaces:
+          - kube-system
+          - gatekeeper-system
+          - argocd
+          - istio-system
+        
+        # Webhook Configuration
+        webhook:
+          enabled: true
+          # Webhook service configuration
+          service:
+            type: ClusterIP
+            port: 443
+            targetPort: 8443
+          
+          # Webhook server configuration
+          port: 8443
+          certDir: /certs
+          
+          # Webhook timeout and failure policy
+          timeoutSeconds: 3
+          failurePolicy: Fail
+          
+          # Admission controller webhooks
+          admissionReviewVersions: ["v1", "v1beta1"]
+          
+          # Certificate management
+          certManager:
+            enabled: false
+          
+          # Self-signed certificate configuration
+          generateSelfSignedCert: true
+          
+          # Webhook rules - what resources to intercept
+          rules:
+            - operations: ["CREATE", "UPDATE"]
+              apiGroups: ["*"]
+              apiVersions: ["*"]
+              resources: ["*"]
+          
+          # Namespace selector for webhook
+          namespaceSelector:
+            matchExpressions:
+            - key: admission.gatekeeper.sh/ignore
+              operator: DoesNotExist
+            - key: name
+              operator: NotIn
+              values: 
+                - kube-system
+                - gatekeeper-system
+                - argocd
+                - istio-system
+        
+        # Validating Admission Webhook Configuration
+        validatingAdmissionWebhook:
+          enabled: true
+          name: gatekeeper-validating-webhook-configuration
+          
+          # Webhook client configuration
+          clientConfig:
+            service:
+              name: gatekeeper-webhook-service
+              namespace: gatekeeper-system
+              path: "/v1/admit"
+              port: 443
+          
+          # Rules for validation webhook
+          rules:
+            - operations: ["CREATE", "UPDATE"]
+              apiGroups: ["*"]
+              apiVersions: ["*"]
+              resources: ["*"]
+              scope: "*"
+          
+          # Failure policy and side effects
+          failurePolicy: Fail
+          sideEffects: None
+          admissionReviewVersions: ["v1", "v1beta1"]
+          
+          # Timeout
+          timeoutSeconds: 10
+          
+          # Namespace selector
+          namespaceSelector:
+            matchExpressions:
+            - key: admission.gatekeeper.sh/ignore
+              operator: DoesNotExist
+            - key: name
+              operator: NotIn
+              values: 
+                - kube-system
+                - gatekeeper-system
+                - argocd
+                - istio-system
+        
+        # Mutating Admission Webhook Configuration (if needed)
+        mutatingAdmissionWebhook:
+          enabled: true
+          name: gatekeeper-mutating-webhook-configuration
+          
+          # Webhook client configuration
+          clientConfig:
+            service:
+              name: gatekeeper-webhook-service
+              namespace: gatekeeper-system
+              path: "/v1/mutate"
+              port: 443
+          
+          # Rules for mutation webhook
+          rules:
+            - operations: ["CREATE", "UPDATE"]
+              apiGroups: ["*"]
+              apiVersions: ["*"]
+              resources: ["*"]
+              scope: "*"
+          
+          # Failure policy and side effects
+          failurePolicy: Fail
+          sideEffects: None
+          admissionReviewVersions: ["v1", "v1beta1"]
+          
+          # Timeout
+          timeoutSeconds: 10
+          
+          # Namespace selector
+          namespaceSelector:
+            matchExpressions:
+            - key: admission.gatekeeper.sh/ignore
+              operator: DoesNotExist
+            - key: name
+              operator: NotIn
+              values: 
+                - kube-system
+                - gatekeeper-system
+                - argocd
+                - istio-system
+        
+        # Controller Manager Configuration
+        controllerManager:
+          # Webhook certificate configuration
+          webhookCertificateConfig:
+            caCertificateDuration: 43800h  # 5 years
+            certificateDuration: 8760h     # 1 year
+            renewBefore: 720h              # 30 days
+        
+        # Resource constraints for webhook pods
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsGroup: 999
+          runAsNonRoot: true
+          runAsUser: 1000
+          seccompProfile:
+            type: RuntimeDefault
+        
+        # Pod disruption budget
+        podDisruptionBudget:
+          enabled: true
+          minAvailable: 1
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 9090
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 9090
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Enable audit functionality
+        audit:
+          enabled: true
+          replicas: 1
+          logLevel: INFO
+          writeToRAMDisk: false
+          
+        # Metrics and monitoring
+        metrics:
+          enabled: true
+          port: 8888
+        
+        # Log level for debugging
+        logLevel: INFO
+        
+        # Enable constraint evaluation logging
+        constraintViolationsLimit: 20
+        
+        # Mutation logging
+        logMutations: false
+        
+        # External data provider configuration (if needed)
+        externalDataProvider:
+          enabled: false
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gatekeeper-system
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  # Ignore differences in webhook configurations that might be managed by Gatekeeper
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionWebhook
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+        - /webhooks/0/failurePolicy
+    - group: admissionregistration.k8s.io
+      kind: MutatingAdmissionWebhook
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+        - /webhooks/0/failurePolicy
+    - group: mutations.gatekeeper.sh
+      kind: Assign
+      jqPathExpressions:
+        - .metadata.annotations."gatekeeper.sh/mutation-id"
+    - group: mutations.gatekeeper.sh
+      kind: Assign
+      name: inject-sec-label
+      jqPathExpressions:
+        - .metadata.annotations."gatekeeper.sh/mutation-id"
+    - group: mutations.gatekeeper.sh
+      kind: AssignMetadata
+      jqPathExpressions:
+        - .metadata.annotations."gatekeeper.sh/mutation-id"
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: assign.mutations.gatekeeper.sh
+      jsonPointers:
+        - /spec/conversion/webhook/clientConfig/caBundle

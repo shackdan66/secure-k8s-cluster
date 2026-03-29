@@ -1,0 +1,33 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  components:
+    cni:
+      namespace: istio-system
+      enabled: true
+
+##Working:
+cat <<EOF > ./my-config.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  meshConfig:
+    accessLogFile: /dev/stdout
+EOF
+istioctl install -f my-config.yaml
+
+
+##WORKING
+cat <<EOF > ./my-config.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      platform: minikube
+  components:
+    cni:
+      namespace: istio-system
+      enabled: true
+EOF
+istioctl install -f my-config.yaml

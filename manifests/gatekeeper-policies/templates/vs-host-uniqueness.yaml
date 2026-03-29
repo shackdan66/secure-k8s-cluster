@@ -1,0 +1,43 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: uniquevirtualservicehost
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  crd:
+    spec:
+      names:
+        kind: UniqueVirtualServiceHost
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            exemptNamespaces:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package uniquevirtualservicehost
+
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "VirtualService"
+          input.review.kind.group == "networking.istio.io"
+
+          exempt := input.parameters.exemptNamespaces[_]
+          input.review.object.metadata.namespace == exempt
+          not input.review.object.metadata.namespace == exempt
+
+          current_hosts := input.review.object.spec.http[_].match[_].headers.host.exact
+
+          other_vs := data.inventory.namespace[_][otype]["VirtualService"][name]
+          otype == "networking.istio.io/v1beta1"
+          name != input.review.object.metadata.name
+
+          other_hosts := other_vs.spec.http[_].match[_].headers.host.exact
+          current_hosts == other_hosts
+
+          msg := sprintf("VirtualService host '%v' conflicts with existing VirtualService '%v'", [current_hosts, name])
+        }

@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bad-app-NAMESPACE
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@bitbucket.org:slalom-consulting/demo.git
+    path: manifests/sample-apps/bad-app
+    targetRevision: HEAD
+    helm:
+      values: |
+        customerService:
+          hostname: HOSTNAME
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: NAMESPACE
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - LabelNamespace=istio-injection=enabled

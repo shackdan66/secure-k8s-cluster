@@ -1,0 +1,9 @@
+customerService:
+  hostname: team2.k8slab.local
+resources:
+  requests:
+    cpu: "10m"
+    memory: "64Mi"
+  limits:
+    cpu: "50m"
+    memory: "128Mi"

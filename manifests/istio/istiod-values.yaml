@@ -1,0 +1,25 @@
+meshConfig:
+  accessLogFile: "/dev/stdout"
+  accessLogFormat: |
+    %START_TIME% %DOWNSTREAM_REMOTE_ADDRESS% %UPSTREAM_HOST% %BYTES_RECEIVED% %BYTES_SENT% %DURATION%
+  enablePrometheusMerge: true
+  defaultConfig:
+    tracing:
+      zipkin:
+        address: "zipkin.istio-system:9411"
+
+global:
+  proxy:
+    autoInject: enabled
+  istioNamespace: istio-system
+  telemetry:
+    enabled: true
+  meshConfig:
+    enablePrometheusMerge: true
+
+pilot:
+  cni:
+    enabled: true
+
+telemetry:
+  enabled: true

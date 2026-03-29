@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istiod
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"  
+spec:
+  project: default
+  source:
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    chart: istiod
+    targetRevision: 1.26.2
+    helm:
+      parameters:
+        - name: meshConfig.accessLogFile
+          value: "/dev/stdout"
+        - name: global.proxy.autoInject
+          value: "enabled"
+        - name: global.istioNamespace
+          value: istio-system
+        - name: pilot.cni.enabled
+          value: "true"
+        - name: telemetry.enabled
+          value: "true"
+        - name: global.telemetry.enabled
+          value: "true"
+        - name: global.meshConfig.enablePrometheusMerge
+          value: "true"
+        - name: meshConfig.accessLogFormat
+          value: |
+            [%START_TIME%] %DOWNSTREAM_REMOTE_ADDRESS% %UPSTREAM_HOST% %BYTES_RECEIVED% %BYTES_SENT% %DURATION%
+        # Enable tracing (example for Zipkin)
+        - name: meshConfig.defaultConfig.tracing.zipkin.address
+          value: "zipkin.istio-system:9411"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: ValidatingWebhookConfiguration
+    name: istio-validator-istio-system
+    jsonPointers:
+    - /webhooks/0/failurePolicy

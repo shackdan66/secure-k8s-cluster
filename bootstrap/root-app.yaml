@@ -2,15 +2,15 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd-base-apps
+  name: root-app
   namespace: argocd
   finalizers:
-  - resources-finalizer.argocd.argoproj.io
+  - resources-finalizer.argocd.argoproj.io/background
 spec:
   project: default
   source:
-    repoURL: https://github.com/shackdan/secure-cluster.git ###git@github.com:shackdan/secure-cluster.git
-    path: apps
+    repoURL: git@bitbucket.org:slalom-consulting/demo.git
+    path: argo-base-apps
     directory:
       recurse: true
     targetRevision: HEAD

@@ -1,0 +1,16 @@
+#virtualservice.yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: web-frontend
+spec:
+  hosts:
+    - {{ .Values.customerService.hostname }}
+  gateways:
+    - {{ printf "%s-%s" .Release.Namespace "demo-gateway" }}
+  http:
+    - route:
+        - destination:
+            host: web-frontend.{{ .Release.Namespace }}.svc.cluster.local
+            port:
+              number: 80

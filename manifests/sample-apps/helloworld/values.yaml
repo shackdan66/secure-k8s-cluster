@@ -1,0 +1,160 @@
+# Default values for helloworld.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+  # fsGroup: 2000
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+
+# Pod-level Security Context
+podSecurityContext:
+  enabled: true
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    enabled: true
+    type: Unconfined
+    # localhostProfile: "profiles/audit.json"  # For custom profiles
+
+# Container-level Security Context
+containerSecurityContext:
+  enabled: true
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  privileged: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    enabled: true
+    drop:
+      - ALL
+    # add:
+    #   - NET_BIND_SERVICE  # Example: if you need specific capabilities
+  seccompProfile:
+    enabled: true
+    type: Unconfined
+    # localhostProfile: "profiles/audit.json"  # For custom profiles
+
+livenessProbe:
+  enabled: true
+  # Use tcpSocket probe (matching your original config)
+  tcpSocket:
+    port: 5000
+  # Alternative: HTTP probe
+  # httpGet:
+  #   path: /hello
+  #   port: 5000
+  #   scheme: HTTP
+  # Alternative: Command probe
+  # exec:
+  #   command:
+  #     - /bin/sh
+  #     - -c
+  #     - "curl -f http://localhost:5000/hello || exit 1"
+  initialDelaySeconds: 90
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# Readiness Probe Configuration  
+readinessProbe:
+  enabled: true
+  # Use HTTP probe (matching your original config)
+  httpGet:
+    path: /hello
+    port: 5000
+    scheme: HTTP
+  # Alternative: TCP probe
+  # tcpSocket:
+  #   port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+# Startup Probe Configuration (optional)
+startupProbe:
+  enabled: false
+  httpGet:
+    path: /hello
+    port: 5000
+    scheme: HTTP
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+  successThreshold: 1
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

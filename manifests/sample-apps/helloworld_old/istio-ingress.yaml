@@ -1,0 +1,17 @@
+#virtualservice.yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: web-frontend
+spec:
+  hosts:
+    - "app2.thenewtonlab.com"
+  gateways:
+    - demo-gateway
+  http:
+    - route:
+        - destination:
+            host: web-frontend.workshop.svc.cluster.local
+            port:
+              number: 80
+

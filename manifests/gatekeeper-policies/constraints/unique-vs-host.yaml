@@ -17,3 +17,5 @@ spec:
       - istio-operator
       - kube-system
       - gatekeeper-system
+      - team1
+      - team2

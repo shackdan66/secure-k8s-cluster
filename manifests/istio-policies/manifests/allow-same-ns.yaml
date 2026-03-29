@@ -1,0 +1,12 @@
+# templates/authorization-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: {{ .Values.namespace }}
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        namespaces: ["{{ .Values.namespace }}", istio-system]

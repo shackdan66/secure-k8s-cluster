@@ -2,8 +2,6 @@ apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
   name: k8spspprivilegedcontainer
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
 spec:
   crd:
     spec:
@@ -36,6 +34,3 @@ spec:
         
           msg := sprintf("Privileged container not allowed in Pod %v", [input.review.object.metadata.name])
         }
-
-
-

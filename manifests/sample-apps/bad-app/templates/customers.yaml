@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: customers2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customers2-v1
+  labels:
+    app: customers2
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customers2
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: customers2
+        version: v1
+    spec:
+      serviceAccountName: customers2
+      containers:
+      - image: gcr.io/tetratelabs/customers:1.0.0
+        imagePullPolicy: Always
+        name: svc
+        ports:
+        - containerPort: 3000
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: customers2
+  labels:
+    app: customers2
+spec:
+  selector:
+    app: customers2
+  ports:
+  - port: 80
+    name: http
+    targetPort: 3000

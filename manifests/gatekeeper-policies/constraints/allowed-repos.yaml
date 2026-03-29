@@ -1,0 +1,35 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sAllowedRepos
+metadata:
+  name: allowed-registries
+  namespace: gatekeeper-system
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+      - apiGroups: ["batch"]
+        kinds: ["Job", "CronJob"]
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    excludedNamespaces:
+      - kube-system
+      - gatekeeper-system
+      - istio-system
+  parameters:
+    allowedRepos:
+      - "mycompany.com/"
+      - "gcr.io/your-project/"
+      - "registry.k8s.io/"
+      - "docker.io/"  # Official Docker images
+      - "nginx"
+      - "curlimages/curl"
+    exemptNamespaces:
+      - kube-system
+      - gatekeeper-system
+      - istio-system
+    exemptImages:
+      - "busybox"  # Allow specific images
+      - "alpine"
+    requireRegistry: true

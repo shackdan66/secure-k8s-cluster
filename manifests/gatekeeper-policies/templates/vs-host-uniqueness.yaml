@@ -2,8 +2,6 @@ apiVersion: templates.gatekeeper.sh/v1beta1
 kind: ConstraintTemplate
 metadata:
   name: uniquevirtualservicehost
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
 spec:
   crd:
     spec:

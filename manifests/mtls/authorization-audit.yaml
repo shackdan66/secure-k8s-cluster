@@ -1,0 +1,20 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: audit-namespace
+  namespace: team1
+spec:
+  action: AUDIT
+  rules:
+  - {} # matches all requests
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: audit-all-inbound
+  namespace: istio-system # root namespace for mesh-wide policy
+spec:
+  action: AUDIT
+  rules:
+  - {} # matches all requests
+

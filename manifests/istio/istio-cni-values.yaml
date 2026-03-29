@@ -1,0 +1,8 @@
+cni:
+  enabled: true
+  namespace: istio-system
+excludeNamespaces:
+  - kube-system
+  - metallb-system
+  - cert-manager
+  - argocd

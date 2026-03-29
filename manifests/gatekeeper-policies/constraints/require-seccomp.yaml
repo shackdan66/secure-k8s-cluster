@@ -2,13 +2,12 @@ apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sPSPSeccomp
 metadata:
   name: require-seccomp-profile
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "1"
 spec:
   enforcementAction: deny
   match:
     kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
       - apiGroups: [""]
         kinds: ["Pod"]
   parameters:
@@ -20,3 +19,5 @@ spec:
       - istio-operator
       - kube-system
       - gatekeeper-system
+      - team1
+      - team2

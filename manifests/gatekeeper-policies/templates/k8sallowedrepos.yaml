@@ -1,0 +1,174 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8sallowedrepos
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    metadata.gatekeeper.sh/title: "Allowed Repositories"
+    metadata.gatekeeper.sh/version: "1.0.0"
+    description: "Requires container images to come from allowed repositories"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sAllowedRepos
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            allowedRepos:
+              description: "List of allowed image repository prefixes"
+              type: array
+              items:
+                type: string
+            exemptNamespaces:
+              description: "List of namespaces exempt from this policy"
+              type: array
+              items:
+                type: string
+            exemptImages:
+              description: "List of specific images exempt from this policy"
+              type: array
+              items:
+                type: string
+            requireRegistry:
+              description: "Whether to require a registry (no bare image names)"
+              type: boolean
+              default: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sallowedrepos
+
+        # Check if namespace is exempt
+        ns_is_exempt {
+          input.review.object.metadata.namespace == input.parameters.exemptNamespaces[_]
+        }
+
+        # Check if specific image is exempt
+        image_is_exempt(image) {
+          image == input.parameters.exemptImages[_]
+        }
+
+        # Check if image starts with allowed repo
+        repo_is_allowed(image) {
+          startswith(image, input.parameters.allowedRepos[_])
+        }
+
+        # Check if image has registry (contains a dot or slash before first colon)
+        has_registry(image) {
+          contains(image, "/")
+        }
+
+        has_registry(image) {
+          # Check for registry with port (e.g., localhost:5000)
+          parts := split(image, "/")
+          contains(parts[0], ".")
+        }
+
+        has_registry(image) {
+          # Check for registry with port (e.g., localhost:5000)
+          parts := split(image, "/")
+          contains(parts[0], ":")
+        }
+
+        # Get pod spec based on resource type
+        pod_spec = spec {
+          input.review.kind.kind == "Pod"
+          spec := input.review.object.spec
+        }
+
+        pod_spec = spec {
+          input.review.kind.kind == "Deployment"
+          spec := input.review.object.spec.template.spec
+        }
+
+        pod_spec = spec {
+          input.review.kind.kind == "StatefulSet"
+          spec := input.review.object.spec.template.spec
+        }
+
+        pod_spec = spec {
+          input.review.kind.kind == "DaemonSet"
+          spec := input.review.object.spec.template.spec
+        }
+
+        pod_spec = spec {
+          input.review.kind.kind == "ReplicaSet"
+          spec := input.review.object.spec.template.spec
+        }
+
+        pod_spec = spec {
+          input.review.kind.kind == "Job"
+          spec := input.review.object.spec.template.spec
+        }
+
+        pod_spec = spec {
+          input.review.kind.kind == "CronJob"
+          spec := input.review.object.spec.jobTemplate.spec.template.spec
+        }
+
+        # Get resource name for better error messages
+        resource_name = name {
+          input.review.kind.kind == "Pod"
+          name := input.review.object.metadata.name
+        }
+
+        resource_name = name {
+          input.review.kind.kind != "Pod"
+          name := sprintf("%s/%s", [input.review.kind.kind, input.review.object.metadata.name])
+        }
+
+        # Violation: Container image from disallowed repository
+        violation[{"msg": msg}] {
+          not ns_is_exempt
+          
+          container := pod_spec.containers[_]
+          image := container.image
+          
+          not image_is_exempt(image)
+          not repo_is_allowed(image)
+          
+          msg := sprintf("%v container <%v> uses disallowed image repository: %v", [resource_name, container.name, image])
+        }
+
+        # Violation: Init container image from disallowed repository
+        violation[{"msg": msg}] {
+          not ns_is_exempt
+          
+          container := pod_spec.initContainers[_]
+          image := container.image
+          
+          not image_is_exempt(image)
+          not repo_is_allowed(image)
+          
+          msg := sprintf("%v init container <%v> uses disallowed image repository: %v", [resource_name, container.name, image])
+        }
+
+        # Violation: Image without registry when required
+        violation[{"msg": msg}] {
+          not ns_is_exempt
+          input.parameters.requireRegistry == true
+          
+          container := pod_spec.containers[_]
+          image := container.image
+          
+          not image_is_exempt(image)
+          not has_registry(image)
+          
+          msg := sprintf("%v container <%v> uses image without registry: %v", [resource_name, container.name, image])
+        }
+
+        # Violation: Init container image without registry when required
+        violation[{"msg": msg}] {
+          not ns_is_exempt
+          input.parameters.requireRegistry == true
+          
+          container := pod_spec.initContainers[_]
+          image := container.image
+          
+          not image_is_exempt(image)
+          not has_registry(image)
+          
+          msg := sprintf("%v init container <%v> uses image without registry: %v", [resource_name, container.name, image])
+        }

@@ -1,0 +1,187 @@
+piVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helloworld
+  #namespace: team-a  # or your target namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: helloworld
+  template:
+    metadata:
+      labels:
+        app: helloworld
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
+    spec:
+      # Pod-level security context - configurable via values
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext:
+        {{- if .Values.podSecurityContext.runAsNonRoot }}
+        runAsNonRoot: {{ .Values.podSecurityContext.runAsNonRoot }}
+        {{- end }}
+        {{- if .Values.podSecurityContext.runAsUser }}
+        runAsUser: {{ .Values.podSecurityContext.runAsUser }}
+        {{- end }}
+        {{- if .Values.podSecurityContext.runAsGroup }}
+        runAsGroup: {{ .Values.podSecurityContext.runAsGroup }}
+        {{- end }}
+        {{- if .Values.podSecurityContext.fsGroup }}
+        fsGroup: {{ .Values.podSecurityContext.fsGroup }}
+        {{- end }}
+        {{- if .Values.podSecurityContext.seccompProfile.enabled }}
+        seccompProfile:
+          type: {{ .Values.podSecurityContext.seccompProfile.type | default "RuntimeDefault" }}
+          {{- if .Values.podSecurityContext.seccompProfile.localhostProfile }}
+          localhostProfile: {{ .Values.podSecurityContext.seccompProfile.localhostProfile }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      
+      containers:
+      - name: helloworld
+        image: docker.io/istio/examples-helloworld-v1:latest
+        ports:
+        - containerPort: 5000
+        
+        # Container-level security context - configurable via values
+        {{- if .Values.containerSecurityContext.enabled }}
+        securityContext:
+          {{- if .Values.containerSecurityContext.allowPrivilegeEscalation }}
+          allowPrivilegeEscalation: {{ .Values.containerSecurityContext.allowPrivilegeEscalation }}
+          {{- end }}
+          {{- if .Values.containerSecurityContext.runAsNonRoot }}
+          runAsNonRoot: {{ .Values.containerSecurityContext.runAsNonRoot }}
+          {{- end }}
+          {{- if .Values.containerSecurityContext.runAsUser }}
+          runAsUser: {{ .Values.containerSecurityContext.runAsUser }}
+          {{- end }}
+          {{- if .Values.containerSecurityContext.runAsGroup }}
+          runAsGroup: {{ .Values.containerSecurityContext.runAsGroup }}
+          {{- end }}
+          {{- if .Values.containerSecurityContext.privileged }}
+          privileged: {{ .Values.containerSecurityContext.privileged }}
+          {{- end }}
+          {{- if .Values.containerSecurityContext.readOnlyRootFilesystem }}
+          readOnlyRootFilesystem: {{ .Values.containerSecurityContext.readOnlyRootFilesystem }}
+          {{- end }}
+          {{- if .Values.containerSecurityContext.capabilities.enabled }}
+          capabilities:
+            {{- if .Values.containerSecurityContext.capabilities.drop }}
+            drop:
+            {{- range .Values.containerSecurityContext.capabilities.drop }}
+            - {{ . }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.containerSecurityContext.capabilities.add }}
+            add:
+            {{- range .Values.containerSecurityContext.capabilities.add }}
+            - {{ . }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.containerSecurityContext.seccompProfile.enabled }}
+          seccompProfile:
+            type: {{ .Values.containerSecurityContext.seccompProfile.type | default "RuntimeDefault" }}
+            {{- if .Values.containerSecurityContext.seccompProfile.localhostProfile }}
+            localhostProfile: {{ .Values.containerSecurityContext.seccompProfile.localhostProfile }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+        
+        # Liveness Probe - configurable via values
+        {{- if .Values.livenessProbe.enabled }}
+        livenessProbe:
+          {{- if .Values.livenessProbe.httpGet }}
+          httpGet:
+            path: {{ .Values.livenessProbe.httpGet.path }}
+            port: {{ .Values.livenessProbe.httpGet.port }}
+            {{- if .Values.livenessProbe.httpGet.scheme }}
+            scheme: {{ .Values.livenessProbe.httpGet.scheme }}
+            {{- end }}
+          {{- else if .Values.livenessProbe.tcpSocket }}
+          tcpSocket:
+            port: {{ .Values.livenessProbe.tcpSocket.port }}
+          {{- else if .Values.livenessProbe.exec }}
+          exec:
+            command:
+            {{- range .Values.livenessProbe.exec.command }}
+            - {{ . }}
+            {{- end }}
+          {{- end }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds | default 30 }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds | default 10 }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds | default 5 }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold | default 3 }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold | default 1 }}
+        {{- end }}
+        
+        # Readiness Probe - configurable via values
+        {{- if .Values.readinessProbe.enabled }}
+        readinessProbe:
+          {{- if .Values.readinessProbe.httpGet }}
+          httpGet:
+            path: {{ .Values.readinessProbe.httpGet.path }}
+            port: {{ .Values.readinessProbe.httpGet.port }}
+            {{- if .Values.readinessProbe.httpGet.scheme }}
+            scheme: {{ .Values.readinessProbe.httpGet.scheme }}
+            {{- end }}
+          {{- else if .Values.readinessProbe.tcpSocket }}
+          tcpSocket:
+            port: {{ .Values.readinessProbe.tcpSocket.port }}
+          {{- else if .Values.readinessProbe.exec }}
+          exec:
+            command:
+            {{- range .Values.readinessProbe.exec.command }}
+            - {{ . }}
+            {{- end }}
+          {{- end }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds | default 5 }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds | default 3 }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold | default 3 }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold | default 1 }}
+        {{- end }}
+        
+        # Startup Probe - configurable via values (optional)
+        {{- if .Values.startupProbe.enabled }}
+        startupProbe:
+          {{- if .Values.startupProbe.httpGet }}
+          httpGet:
+            path: {{ .Values.startupProbe.httpGet.path }}
+            port: {{ .Values.startupProbe.httpGet.port }}
+            {{- if .Values.startupProbe.httpGet.scheme }}
+            scheme: {{ .Values.startupProbe.httpGet.scheme }}
+            {{- end }}
+          {{- else if .Values.startupProbe.tcpSocket }}
+          tcpSocket:
+            port: {{ .Values.startupProbe.tcpSocket.port }}
+          {{- else if .Values.startupProbe.exec }}
+          exec:
+            command:
+            {{- range .Values.startupProbe.exec.command }}
+            - {{ . }}
+            {{- end }}
+          {{- end }}
+          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds | default 10 }}
+          periodSeconds: {{ .Values.startupProbe.periodSeconds | default 10 }}
+          timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds | default 5 }}
+          failureThreshold: {{ .Values.startupProbe.failureThreshold | default 30 }}
+          successThreshold: {{ .Values.startupProbe.successThreshold | default 1 }}
+        {{- end }}
+        
+      volumes:
+      - name: tmp
+        emptyDir: {}

@@ -2,8 +2,6 @@ apiVersion: templates.gatekeeper.sh/v1beta1
 kind: ConstraintTemplate
 metadata:
   name: k8srequiredprobes
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
 spec:
   crd:
     spec:
@@ -22,27 +20,49 @@ spec:
       rego: |
         package k8srequiredprobes
 
-        missing_probe(container, probe) = true {
-          not container[probe]
+        # Skip if pod has istio injection annotation
+        has_istio_injection {
+          input.review.object.metadata.annotations["sidecar.istio.io/inject"] == "true"
         }
-        
-        missing_probe(container, probe) = true {
-          probe_fields := {field | container[probe][field]}
-          count(probe_fields) == 0
+
+        has_istio_injection {
+          input.review.object.spec.template.metadata.annotations["sidecar.istio.io/inject"] == "true"
         }
-        
+
+        # Known sidecar containers
+        is_sidecar(container_name) {
+          container_name == "istio-proxy"
+        }
+
+        is_sidecar(container_name) {
+          container_name == "istio-init"
+        }
+
+        # Get pod spec
+        pod_spec = spec {
+          input.review.kind.kind == "Pod"
+          spec := input.review.object.spec
+        }
+
+        pod_spec = spec {
+          input.review.kind.kind != "Pod"
+          spec := input.review.object.spec.template.spec
+        }
+
+        # Check if namespace is exempt
         ns_is_exempt {
           input.review.object.metadata.namespace == input.parameters.exemptNamespaces[_]
         }
-        
-        violation[{"msg": msg}] {
-          input.review.kind.kind == "Pod"
-          not ns_is_exempt
-        
-          container := input.review.object.spec.containers[_]
-          probe := ["readinessProbe", "livenessProbe"][_]
-          missing_probe(container, probe)
-        
-          msg := sprintf("Container <%v> in Pod <%v> is missing required <%v>", [container.name, input.review.object.metadata.name, probe])
-        }
 
+        violation[{"msg": msg}] {
+          not ns_is_exempt
+          not has_istio_injection  # Skip pods with Istio injection
+          
+          container := pod_spec.containers[_]
+          not is_sidecar(container.name)
+          
+          probe := ["readinessProbe", "livenessProbe"][_]
+          not container[probe]
+        
+          msg := sprintf("Container <%v> is missing required <%v>", [container.name, probe])
+        }
